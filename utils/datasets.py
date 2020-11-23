@@ -11,6 +11,10 @@ from utils.augmentations import horisontal_flip
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
+import pandas as pd
+import datetime
+import re
+import math
 
 def pad_to_square(img, pad_value):
     c, h, w = img.shape
@@ -56,8 +60,109 @@ class ImageFolder(Dataset):
         return len(self.files)
 
 
+
+aaa = set()
+def cell_time_yuchuli_proc(cell):#修复表格里面的格式问题，生成Xlsx
+    pattern = re.compile(r'\W+')#匹配符号1：2这样的
+    num_pattern = re.compile(r'\d+')#匹配数字这样的30
+    if isinstance(cell, int) or isinstance(cell, float) :
+        if cell == 0 or cell == 0.0:
+            return "0"
+        return  str(int(cell))#预处理时统一处理成STRING
+    elif isinstance(cell ,datetime.datetime):
+        return "###"#非法字符，返回空，填写原地址
+    elif isinstance(cell ,datetime.time):
+        return f"{cell.hour}:{cell.minute}"
+    elif isinstance(cell, str):
+        cell = cell.strip()
+        if pattern.search(cell):
+            minute, second = pattern.split(cell)#有三个就报错，提醒的作用
+            return f"{int(minute)}:{int(second)}" #返回修改成标准格式，带一个空格
+        elif num_pattern.search(cell):
+            return cell
+        elif cell == "0":
+            return cell
+        if cell.strip():
+            print(cell)
+        return ""
+    return ""
+
+def cell_time_proc(cell):#这里不能打断点
+    if isinstance(cell , int) or isinstance(cell , float):
+        return int(cell)#不考虑浮点数
+    elif isinstance(cell , datetime.time):#datetime.time表示的时间
+        return cell.minute + cell.hour*60
+        # return cell
+    elif isinstance(cell , str):#有字符串表示的时间
+
+        pattern = re.compile(r'\W+')
+        if pattern.search(cell):#字符串中有间隔符,则自动计算时间
+            minute, second = pattern.split(cell)
+            minute = int(minute)
+            second = int(second)
+            return second + minute*60
+        elif cell == "":
+            return cell
+        else :
+            return int(cell) ##字符串中没有间隔符,则直接转换成时间
+    else:#1900:00:00  异常数据
+        return ""
+
+from enum import Enum
+class music_type(Enum):
+    kp = 1
+    pg = 2
+    xs = 3
+    gc = 4
+
+
+kp = "空拍"
+pg = "平鼓"
+xs = "向上"
+gc = "高潮"
+def cell_type_proc(cell):
+    if cell == "":
+        return cell
+    elif not cell:
+        return 111
+    elif isinstance(cell, str) and (cell in [pg, kp , xs ,gc]):
+        if cell == kp:
+            return 1
+        if cell == pg:
+            return 2
+        if cell == xs:
+            return 3
+        if cell == gc:
+            return 4
+        return cell
+    # else:
+    #     raise
+
+
+
 class ListDataset(Dataset):
     def __init__(self, list_path, img_size=416, augment=True, multiscale=True, normalized_labels=True):
+        sub_file = 'data/custom/' + 'data.xlsx'
+        sub_file_yuchuli = 'data/custom/' + 'yuchulihou.xlsx'
+        sub_file_all_ndarray = 'data/custom/' + 'all_ndarray.xlsx'
+
+        excel = pd.read_excel(io=sub_file, header=1)  # 0是第一行
+        excel = excel.fillna("")
+        for col_name in excel.columns.tolist():
+            if isinstance(col_name, str):
+                if col_name.startswith("time-end") or col_name.startswith("time-start"):
+                    excel[col_name] = excel[col_name].apply(cell_time_proc)
+                    # excel[col_name] = excel[col_name].apply(cell_time_yuchuli_proc)#预处理和找错误使用
+                    # excel[col_name] = excel[col_name].astype(int)#设置单元格格式
+                elif col_name.startswith("type-specific"):
+                    continue  # 暂时不用预处理这列
+                elif col_name.startswith("type"):
+                    excel[col_name] = excel[col_name].apply(cell_type_proc)  ##预处理
+
+        # excel.values[0][4]
+        excel.loc[[0, 1, 2, 3], ['type0', 'type1']].to_numpy()  # 完美 取4行 excel.values可以访问整个表格
+        excel.to_excel(sub_file_all_ndarray, index=False)  # 全部处理成NDARRAY，保存
+
         with open(list_path, "r") as file:
             self.img_files = file.readlines()
 
