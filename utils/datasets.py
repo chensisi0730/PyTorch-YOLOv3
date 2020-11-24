@@ -62,22 +62,22 @@ class ImageFolder(Dataset):
 
 
 aaa = set()
-def cell_time_yuchuli_proc(cell):#ĞŞ¸´±í¸ñÀïÃæµÄ¸ñÊ½ÎÊÌâ£¬Éú³ÉXlsx
-    pattern = re.compile(r'\W+')#Æ¥Åä·ûºÅ1£º2ÕâÑùµÄ
-    num_pattern = re.compile(r'\d+')#Æ¥ÅäÊı×ÖÕâÑùµÄ30
+def cell_time_yuchuli_proc(cell):#ä¿®å¤è¡¨æ ¼é‡Œé¢çš„æ ¼å¼é—®é¢˜ï¼Œç”ŸæˆXlsx
+    pattern = re.compile(r'\W+')#åŒ¹é…ç¬¦å·1ï¼š2è¿™æ ·çš„
+    num_pattern = re.compile(r'\d+')#åŒ¹é…æ•°å­—è¿™æ ·çš„30
     if isinstance(cell, int) or isinstance(cell, float) :
         if cell == 0 or cell == 0.0:
             return "0"
-        return  str(int(cell))#Ô¤´¦ÀíÊ±Í³Ò»´¦Àí³ÉSTRING
+        return  str(int(cell))#é¢„å¤„ç†æ—¶ç»Ÿä¸€å¤„ç†æˆSTRING
     elif isinstance(cell ,datetime.datetime):
-        return "###"#·Ç·¨×Ö·û£¬·µ»Ø¿Õ£¬ÌîĞ´Ô­µØÖ·
+        return "###"#éæ³•å­—ç¬¦ï¼Œè¿”å›ç©ºï¼Œå¡«å†™åŸåœ°å€
     elif isinstance(cell ,datetime.time):
         return f"{cell.hour}:{cell.minute}"
     elif isinstance(cell, str):
         cell = cell.strip()
         if pattern.search(cell):
-            minute, second = pattern.split(cell)#ÓĞÈı¸ö¾Í±¨´í£¬ÌáĞÑµÄ×÷ÓÃ
-            return f"{int(minute)}:{int(second)}" #·µ»ØĞŞ¸Ä³É±ê×¼¸ñÊ½£¬´øÒ»¸ö¿Õ¸ñ
+            minute, second = pattern.split(cell)#æœ‰ä¸‰ä¸ªå°±æŠ¥é”™ï¼Œæé†’çš„ä½œç”¨
+            return f"{int(minute)}:{int(second)}" #è¿”å›ä¿®æ”¹æˆæ ‡å‡†æ ¼å¼ï¼Œå¸¦ä¸€ä¸ªç©ºæ ¼
         elif num_pattern.search(cell):
             return cell
         elif cell == "0":
@@ -87,16 +87,16 @@ def cell_time_yuchuli_proc(cell):#ĞŞ¸´±í¸ñÀïÃæµÄ¸ñÊ½ÎÊÌâ£¬Éú³ÉXlsx
         return ""
     return ""
 
-def cell_time_proc(cell):#ÕâÀï²»ÄÜ´ò¶Ïµã
+def cell_time_proc(cell):#è¿™é‡Œä¸èƒ½æ‰“æ–­ç‚¹
     if isinstance(cell , int) or isinstance(cell , float):
-        return int(cell)#²»¿¼ÂÇ¸¡µãÊı
-    elif isinstance(cell , datetime.time):#datetime.time±íÊ¾µÄÊ±¼ä
+        return int(cell)#ä¸è€ƒè™‘æµ®ç‚¹æ•°
+    elif isinstance(cell , datetime.time):#datetime.timeè¡¨ç¤ºçš„æ—¶é—´
         return cell.minute + cell.hour*60
         # return cell
-    elif isinstance(cell , str):#ÓĞ×Ö·û´®±íÊ¾µÄÊ±¼ä
+    elif isinstance(cell , str):#æœ‰å­—ç¬¦ä¸²è¡¨ç¤ºçš„æ—¶é—´
 
         pattern = re.compile(r'\W+')
-        if pattern.search(cell):#×Ö·û´®ÖĞÓĞ¼ä¸ô·û,Ôò×Ô¶¯¼ÆËãÊ±¼ä
+        if pattern.search(cell):#å­—ç¬¦ä¸²ä¸­æœ‰é—´éš”ç¬¦,åˆ™è‡ªåŠ¨è®¡ç®—æ—¶é—´
             minute, second = pattern.split(cell)
             minute = int(minute)
             second = int(second)
@@ -104,8 +104,8 @@ def cell_time_proc(cell):#ÕâÀï²»ÄÜ´ò¶Ïµã
         elif cell == "":
             return cell
         else :
-            return int(cell) ##×Ö·û´®ÖĞÃ»ÓĞ¼ä¸ô·û,ÔòÖ±½Ó×ª»»³ÉÊ±¼ä
-    else:#1900:00:00  Òì³£Êı¾İ
+            return int(cell) ##å­—ç¬¦ä¸²ä¸­æ²¡æœ‰é—´éš”ç¬¦,åˆ™ç›´æ¥è½¬æ¢æˆæ—¶é—´
+    else:#1900:00:00  å¼‚å¸¸æ•°æ®
         return ""
 
 from enum import Enum
@@ -115,11 +115,10 @@ class music_type(Enum):
     xs = 3
     gc = 4
 
-
-kp = "¿ÕÅÄ"
-pg = "Æ½¹Ä"
-xs = "ÏòÉÏ"
-gc = "¸ß³±"
+kp = "ç©ºæ‹"
+pg = "å¹³é¼“"
+xs = "å‘ä¸Š"
+gc = "é«˜æ½®"
 def cell_type_proc(cell):
     if cell == "":
         return cell
@@ -146,22 +145,62 @@ class ListDataset(Dataset):
         sub_file_yuchuli = 'data/custom/' + 'yuchulihou.xlsx'
         sub_file_all_ndarray = 'data/custom/' + 'all_ndarray.xlsx'
 
-        excel = pd.read_excel(io=sub_file, header=1)  # 0ÊÇµÚÒ»ĞĞ
+        excel = pd.read_excel(io=sub_file, header=1)  # 0æ˜¯ç¬¬ä¸€è¡Œ
         excel = excel.fillna("")
         for col_name in excel.columns.tolist():
             if isinstance(col_name, str):
                 if col_name.startswith("time-end") or col_name.startswith("time-start"):
                     excel[col_name] = excel[col_name].apply(cell_time_proc)
-                    # excel[col_name] = excel[col_name].apply(cell_time_yuchuli_proc)#Ô¤´¦ÀíºÍÕÒ´íÎóÊ¹ÓÃ
-                    # excel[col_name] = excel[col_name].astype(int)#ÉèÖÃµ¥Ôª¸ñ¸ñÊ½
+                    # excel[col_name] = excel[col_name].apply(cell_time_yuchuli_proc)#é¢„å¤„ç†å’Œæ‰¾é”™è¯¯ä½¿ç”¨
+                    # excel[col_name] = excel[col_name].astype(int)#è®¾ç½®å•å…ƒæ ¼æ ¼å¼
                 elif col_name.startswith("type-specific"):
-                    continue  # ÔİÊ±²»ÓÃÔ¤´¦ÀíÕâÁĞ
+                    continue  # æš‚æ—¶ä¸ç”¨é¢„å¤„ç†è¿™åˆ—
                 elif col_name.startswith("type"):
-                    excel[col_name] = excel[col_name].apply(cell_type_proc)  ##Ô¤´¦Àí
+                    excel[col_name] = excel[col_name].apply(cell_type_proc)  ##é¢„å¤„ç†
 
         # excel.values[0][4]
-        excel.loc[[0, 1, 2, 3], ['type0', 'type1']].to_numpy()  # ÍêÃÀ È¡4ĞĞ excel.values¿ÉÒÔ·ÃÎÊÕû¸ö±í¸ñ
-        excel.to_excel(sub_file_all_ndarray, index=False)  # È«²¿´¦Àí³ÉNDARRAY£¬±£´æ
+        # excel.loc[[0, 1, 2, 3], ['type0', 'type1']].to_numpy()#å®Œç¾ å–4è¡Œï¼Œ
+        # excel.to_excel(sub_file_yuchuli , index=False) #é¢„å¤„ç†ï¼Œä¿å­˜
+        # excel.to_excel(sub_file_all_ndarray, index=False)  # å…¨éƒ¨å¤„ç†æˆNDARRAYï¼Œä¿å­˜
+        arrary = excel.loc[:, [
+                                "origin",
+                                'time-start0', 'time-end0', 'type0',   'time-start1', 'time-end1', 'type1',   'time-start2', 'time-end2', 'type2',
+                                'time-start3', 'time-end3', 'type3',   'time-start4', 'time-end4', 'type4',   'time-start5', 'time-end5', 'type5',
+                                'time-start6', 'time-end6', 'type6',   'time-start7', 'time-end7', 'type7',   'time-start8', 'time-end8', 'type8',
+                                'time-start9', 'time-end9', 'type9',   'time-start10', 'time-end10', 'type10',  'time-start11', 'time-end11', 'type11',
+                                'time-start12', 'time-end12', 'type12', 'time-start13', 'time-end13', 'type13', 'time-start14', 'time-end14', 'type14',
+                                ]].to_json(r'filename1.json', lines=True, orient="records")  # ä¿å­˜jsonæ–‡ä»¶çš„å­—å…¸æ ¼å¼ï¼Œä¸ç”¨
+
+        # æ•°æ®æ¸…æ´—
+
+        # å¡«å……0å€¼  #å‰é¢å·²ç»æ•´ä½“ä¸Šç²—ç³™çš„å¡«å……äº†ï¼Œå‰é¢æ˜¯æŒ‰å€¼ä¼ é€’ï¼Œéœ€è¦èµ‹å€¼
+        excel[
+            'time-start0'
+        ].fillna("", inplace=True)#inplace=True :ä»£è¡¨æŒ‰åœ°å€ä¼ é€’
+
+        # æŒ‰åˆ—é™å®šç±»å‹
+        # excel = excel.astype({"time-start0": int, "origin": str})
+        # print(excel)
+
+        # æˆªå–å­çš„DFï¼ŒåŒæ—¶é™å®šé¡ºåº
+        sub_excel = excel.loc[:, [
+                                    "origin",
+                                    'time-start0', 'time-end0', 'type0',   'time-start1', 'time-end1', 'type1',   'time-start2', 'time-end2', 'type2',
+                                    'time-start3', 'time-end3', 'type3',   'time-start4', 'time-end4', 'type4',   'time-start5', 'time-end5', 'type5',
+                                    'time-start6', 'time-end6', 'type6',   'time-start7', 'time-end7', 'type7',   'time-start8', 'time-end8', 'type8',
+                                    'time-start9', 'time-end9', 'type9',   'time-start10', 'time-end10', 'type10',  'time-start11', 'time-end11', 'type11',
+                                    'time-start12', 'time-end12', 'type12', 'time-start13', 'time-end13', 'type13', 'time-start14', 'time-end14', 'type14',
+                                    ]]
+        print(sub_excel)
+        # ä¿å­˜
+        pkl_path = r'sub_data.pkl'
+        sub_excel.to_pickle(pkl_path)
+
+        # åŠ è½½
+        sub = pd.read_pickle(pkl_path)
+        for r in sub.values.tolist():
+            print(r)
+
 
         with open(list_path, "r") as file:
             self.img_files = file.readlines()
