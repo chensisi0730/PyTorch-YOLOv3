@@ -137,6 +137,9 @@ def cell_type_proc(cell):
     # else:
     #     raise
 
+def cell_origin_proc(cell):#这里不能打断点
+    if isinstance(cell , str):#有字符串表示的时间
+        return cell.replace("\\",'/')
 
 
 class ListDataset(Dataset):
@@ -156,7 +159,9 @@ class ListDataset(Dataset):
                 elif col_name.startswith("type-specific"):
                     continue  # 暂时不用预处理这列
                 elif col_name.startswith("type"):
-                    excel[col_name] = excel[col_name].apply(cell_type_proc)  ##预处理
+                    excel[col_name] = excel[col_name].apply(cell_type_proc)   ##预处理
+                elif col_name.startswith("origin") or col_name.startswith("drum"):
+                    excel[col_name] = excel[col_name].apply(cell_origin_proc)  ##预处理
 
         # excel.values[0][4]
         # excel.loc[[0, 1, 2, 3], ['type0', 'type1']].to_numpy()#完美 取4行，
