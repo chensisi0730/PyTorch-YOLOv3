@@ -15,6 +15,19 @@ import pandas as pd
 import datetime
 import re
 import math
+import numpy as np
+import scipy.io.wavfile as wav
+import matplotlib.pyplot as plt
+import os
+
+import librosa
+import librosa.display
+
+import matplotlib.pyplot as plt
+import numpy as np
+import fnmatch
+import posixpath
+import matplotlib.pyplot as plt
 
 def pad_to_square(img, pad_value):
     c, h, w = img.shape
@@ -141,13 +154,64 @@ def cell_origin_proc(cell):#这里不能打断点
     if isinstance(cell , str):#有字符串表示的时间
         return cell.replace("\\",'/')
 
+def FFT_Change_wav_to_npy_file(directory, pattern='*.wav' ,img_size=1024 , re_build_wav = True , re_build_mp3 = True):
+    """
+    """
+    yasuo_beishu = 2
+    file_wav_list=[]
+    files = []
+    if re_build_wav == True:
+        os.chdir(directory)
+        os.system("rm -rf *.wav.npy ")
+    if re_build_mp3 == True:
+        os.chdir(directory)
+        os.system("rm -rf *.mp3.npy ")
+
+    for root, dirnames, filenames in os.walk(directory):
+        for filename in fnmatch.filter(filenames, pattern):     # 实现列表特殊字符的过滤或筛选,返回符合匹配“.wav”字符列表
+            y_44k, sr = librosa.load(os.path.join(root, filename) , sr=None, mono=True )
+            if sr != 44100:
+                y = librosa.resample(y_44k , sr, 44100)  # resample() 重采样函数
+                y_44k = y
+
+            # librosa.display.waveplot(y_44k, sr=sr)#波形图
+            # plt.show()
+
+            time = librosa.get_duration(filename=os.path.join(root, filename))#持续时间（以秒为单位）
+
+
+            # 计算Mel  scaled 频谱  返回：Mel频谱shape=(n_mels, t)------------
+            # 方法一：使用时间序列求Mel频谱
+            # print(librosa.feature.melspectrogram(y=y_44k, sr=sr))
+            # array([[  2.891e-07,   2.548e-03, ...,   8.116e-09,   5.633e-09],
+            #        [  1.986e-07,   1.162e-02, ...,   9.332e-08,   6.716e-09],
+            #        ...,
+            #        [  3.668e-09,   2.029e-08, ...,   3.208e-09,   2.864e-09],
+            #        [  2.561e-10,   2.096e-09, ...,   7.543e-10,   6.101e-10]])
+
+            # 方法二：使用stft频谱求Mel频谱
+            D = np.abs(librosa.stft(y_44k)) ** 2  # stft频谱
+            S = librosa.feature.melspectrogram(S=D , n_mels=img_size)  # 使用stft频谱求Mel频谱
+
+            plt.figure(figsize=(10, 4))
+            S_dB = librosa.power_to_db(S, ref=np.max)
+            mel_spect2 = S_dB[:, -1 : -1*yasuo_beishu*img_size : -1* yasuo_beishu]
+            np.save(os.path.join(root, filename + ".npy"), mel_spect2 * (-10))
+
+            # librosa.display.specshow(S_dB ,  y_axis='mel', fmax=8000, x_axis='time')
+            # plt.colorbar(format='%+2.0f dB')
+            # plt.title('Mel spectrogram')
+            # plt.tight_layout()
+            # plt.show()
+
 
 class ListDataset(Dataset):
     def __init__(self, list_path, img_size=416, augment=True, multiscale=True, normalized_labels=True):
         sub_file = 'data/custom/' + 'data.xlsx'
         sub_file_yuchuli = 'data/custom/' + 'yuchulihou.xlsx'
         sub_file_all_ndarray = 'data/custom/' + 'all_ndarray.xlsx'
-
+        FFT_Change_wav_to_npy_file("/data3/code/github_code/yolov3-to-dj/dataset/dj", '*.wav', img_size=1024, re_build_wav=True, re_build_mp3=False)
+        FFT_Change_wav_to_npy_file("/data3/code/github_code/yolov3-to-dj/dataset/dj", '*.mp3', img_size=1024, re_build_wav=False, re_build_mp3=True)
         excel = pd.read_excel(io=sub_file, header=1)  # 0是第一行
         excel = excel.fillna("")
         for col_name in excel.columns.tolist():
@@ -206,7 +270,7 @@ class ListDataset(Dataset):
         for r in sub.values.tolist():
             print(r)
 
-
+        melspectrogram.FF
         with open(list_path, "r") as file:
             self.img_files = file.readlines()
 
