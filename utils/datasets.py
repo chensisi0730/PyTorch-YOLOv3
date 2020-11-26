@@ -152,66 +152,73 @@ def cell_type_proc(cell):
 
 def cell_origin_proc(cell):#这里不能打断点
     if isinstance(cell , str):#有字符串表示的时间
-        return cell.replace("\\",'/')
+        return cell.replace("\\",'/').rstrip().rstrip('\"')
 
-def FFT_Change_wav_to_npy_file(directory, pattern='*.wav' ,img_size=1024 , re_build_wav = True , re_build_mp3 = True):
+from pathlib import Path
+def FFT_Change_wav_to_npy_file(directory, pattern='*.wav' ,img_size=1024 , re_build_wav = True ):
     """
     """
     yasuo_beishu = 2
     file_wav_list=[]
     files = []
-    if re_build_wav == True:
-        os.chdir(directory)
-        os.system("rm -rf *.wav.npy ")
-    if re_build_mp3 == True:
-        os.chdir(directory)
-        os.system("rm -rf *.mp3.npy ")
+
+
 
     for root, dirnames, filenames in os.walk(directory):
-        for filename in fnmatch.filter(filenames, pattern):     # 实现列表特殊字符的过滤或筛选,返回符合匹配“.wav”字符列表
-            y_44k, sr = librosa.load(os.path.join(root, filename) , sr=None, mono=True )
-            if sr != 44100:
-                y = librosa.resample(y_44k , sr, 44100)  # resample() 重采样函数
-                y_44k = y
+        for filename in fnmatch.filter(filenames, pattern):  # 实现列表特殊字符的过滤或筛选,返回符合匹配“.wav”字符列表
+            # if Path(os.path.join(root, filename+".npy")).exists == False:
+            if os.path.exists(os.path.join(root, filename + ".npy")) == True:  # 已经存在就删除
+                if re_build_wav == True:
+                    # os.chdir(directory)
+                    os.system("rm os.path.join(root, filename+'.npy')")
 
-            # librosa.display.waveplot(y_44k, sr=sr)#波形图
-            # plt.show()
+            else :
+                if os.path.getsize(os.path.join(root, filename)) < 1024*1024:
+                    pass
+                else:
+                    y_44k, sr = librosa.load(os.path.join(root, filename), sr=None, mono=True)
+                    if sr != 44100:
+                        y = librosa.resample(y_44k, sr, 44100)  # resample() 重采样函数
+                        y_44k = y
 
-            time = librosa.get_duration(filename=os.path.join(root, filename))#持续时间（以秒为单位）
+                    # librosa.display.waveplot(y_44k, sr=sr)#波形图
+                    # plt.show()
 
+                    time = librosa.get_duration(filename=os.path.join(root, filename))  # 持续时间（以秒为单位）
 
-            # 计算Mel  scaled 频谱  返回：Mel频谱shape=(n_mels, t)------------
-            # 方法一：使用时间序列求Mel频谱
-            # print(librosa.feature.melspectrogram(y=y_44k, sr=sr))
-            # array([[  2.891e-07,   2.548e-03, ...,   8.116e-09,   5.633e-09],
-            #        [  1.986e-07,   1.162e-02, ...,   9.332e-08,   6.716e-09],
-            #        ...,
-            #        [  3.668e-09,   2.029e-08, ...,   3.208e-09,   2.864e-09],
-            #        [  2.561e-10,   2.096e-09, ...,   7.543e-10,   6.101e-10]])
+                    # 计算Mel  scaled 频谱  返回：Mel频谱shape=(n_mels, t)------------
+                    # 方法一：使用时间序列求Mel频谱
+                    # print(librosa.feature.melspectrogram(y=y_44k, sr=sr))
+                    # array([[  2.891e-07,   2.548e-03, ...,   8.116e-09,   5.633e-09],
+                    #        [  1.986e-07,   1.162e-02, ...,   9.332e-08,   6.716e-09],
+                    #        ...,
+                    #        [  3.668e-09,   2.029e-08, ...,   3.208e-09,   2.864e-09],
+                    #        [  2.561e-10,   2.096e-09, ...,   7.543e-10,   6.101e-10]])
 
-            # 方法二：使用stft频谱求Mel频谱
-            D = np.abs(librosa.stft(y_44k)) ** 2  # stft频谱
-            S = librosa.feature.melspectrogram(S=D , n_mels=img_size)  # 使用stft频谱求Mel频谱
+                    # 方法二：使用stft频谱求Mel频谱
+                    D = np.abs(librosa.stft(y_44k)) ** 2  # stft频谱
+                    S = librosa.feature.melspectrogram(S=D, n_mels=img_size)  # 使用stft频谱求Mel频谱,有时间看PADING参数
 
-            plt.figure(figsize=(10, 4))
-            S_dB = librosa.power_to_db(S, ref=np.max)
-            mel_spect2 = S_dB[:, -1 : -1*yasuo_beishu*img_size : -1* yasuo_beishu]
-            np.save(os.path.join(root, filename + ".npy"), mel_spect2 * (-10))
+                    # plt.figure(figsize=(10, 4))
+                    S_dB = librosa.power_to_db(S, ref=np.max)
+                    print(S_dB.shape)
+                    mel_spect2 = S_dB[:, -1: -1 * yasuo_beishu * img_size: -1 * yasuo_beishu]
+                    np.save(os.path.join(root, filename + ".npy"), mel_spect2 * (-10))
 
-            # librosa.display.specshow(S_dB ,  y_axis='mel', fmax=8000, x_axis='time')
-            # plt.colorbar(format='%+2.0f dB')
-            # plt.title('Mel spectrogram')
-            # plt.tight_layout()
-            # plt.show()
+                    # librosa.display.specshow(S_dB ,  y_axis='mel', fmax=8000, x_axis='time')
+                    # plt.colorbar(format='%+2.0f dB')
+                    # plt.title('Mel spectrogram')
+                    # plt.tight_layout()
+                    # plt.show()
 
 
 class ListDataset(Dataset):
     def __init__(self, list_path, img_size=416, augment=True, multiscale=True, normalized_labels=True):
-        sub_file = 'data/custom/' + 'data.xlsx'
+        sub_file = 'data/custom/' + 'data.xlsx'  # train.py文件的相对路径
         sub_file_yuchuli = 'data/custom/' + 'yuchulihou.xlsx'
         sub_file_all_ndarray = 'data/custom/' + 'all_ndarray.xlsx'
-        FFT_Change_wav_to_npy_file("/data3/code/github_code/yolov3-to-dj/dataset/dj", '*.wav', img_size=1024, re_build_wav=True, re_build_mp3=False)
-        FFT_Change_wav_to_npy_file("/data3/code/github_code/yolov3-to-dj/dataset/dj", '*.mp3', img_size=1024, re_build_wav=False, re_build_mp3=True)
+        FFT_Change_wav_to_npy_file("/data3/code/github_code/yolov3-to-dj/mini_yolov3", '*.wav', img_size=512, re_build_wav=False)
+        FFT_Change_wav_to_npy_file("/data3/code/github_code/yolov3-to-dj/mini_yolov3", '*.mp3', img_size=512, re_build_wav=False)#ls -lR|grep "^-"|wc -l
         excel = pd.read_excel(io=sub_file, header=1)  # 0是第一行
         excel = excel.fillna("")
         for col_name in excel.columns.tolist():
@@ -266,15 +273,17 @@ class ListDataset(Dataset):
         sub_excel.to_pickle(pkl_path)
 
         # 加载
+        self.img_files = []
         sub = pd.read_pickle(pkl_path)
         for r in sub.values.tolist():
-            print(r)
+            self.img_files.append(r)
+            # print(r)
 
-        melspectrogram.FF
+        return
         with open(list_path, "r") as file:
-            self.img_files = file.readlines()
+            self.img_files = file.readlines()# 图像路径列表
 
-        self.label_files = [
+        self.label_files = [  ## 标签列表
             path.replace("images", "labels").replace(".png", ".txt").replace(".jpg", ".txt")
             for path in self.img_files
         ]
@@ -288,12 +297,17 @@ class ListDataset(Dataset):
         self.batch_count = 0
 
     def __getitem__(self, index):
-
         # ---------
         #  Image
         # ---------
+        img_path   = self.img_files[index % len(self.img_files)][0].rstrip().rstrip('\"')+'.npy'  #这个路径是EXCEL中的，按照文件甲分类的
+        img = np.load(img_path)#加载.npy
+        label = self.img_files[index % len(self.img_files)][1:].rstrip()#返回标签
 
-        img_path = self.img_files[index % len(self.img_files)].rstrip()
+        for index, element in enumerate(label):
+            if element == "":
+                del label[index]
+        return img , label
 
         # Extract image as PyTorch tensor
         img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
