@@ -75,7 +75,7 @@ class ImageFolder(Dataset):
 
 
 aaa = set()
-def cell_time_yuchuli_proc(cell):#修复表格里面的格式问题，生成Xlsx
+def cell_time_yuchuli_proc(cell ,index):#修复表格里面的格式问题，生成Xlsx  index:列
     pattern = re.compile(r'\W+')#匹配符号1：2这样的
     num_pattern = re.compile(r'\d+')#匹配数字这样的30
     if isinstance(cell, int) or isinstance(cell, float) :
@@ -83,22 +83,29 @@ def cell_time_yuchuli_proc(cell):#修复表格里面的格式问题，生成Xlsx
             return "0"
         return  str(int(cell))#预处理时统一处理成STRING
     elif isinstance(cell ,datetime.datetime):
-        return "###"#非法字符，返回空，填写原地址
+        return "###"#非法字符，返回空，填写到原地址
     elif isinstance(cell ,datetime.time):
         return f"{cell.hour}:{cell.minute}"
     elif isinstance(cell, str):
-        cell = cell.strip()
-        if pattern.search(cell):
-            minute, second = pattern.split(cell)#有三个就报错，提醒的作用
-            return f"{int(minute)}:{int(second)}" #返回修改成标准格式，带一个空格
-        elif num_pattern.search(cell):
-            return cell
-        elif cell == "0":
-            return cell
-        if cell.strip():
-            print(cell)
+        if cell != "" :
+            cell = cell.strip().strip('·')
+            # print(cell)
+            pattern = r"(\d+)[:：]?(\d+)?[:：]?(\d+)?"
+            result = re.match(pattern, cell)
+            if result is not None:
+                valCount = len(list(filter(None, result.groups())))
+                if valCount == 1:
+                    return f"{0}:{int(result.groups()[0])}"
+                elif valCount == 2:
+                    return f"{int(result.groups()[0])}:{int(result.groups()[1])}"
+                elif valCount == 3:
+                    return f"{int(result.groups()[0])}:{int(result.groups()[2])}"
+                else:
+                    return "###"
+
+
+    else:
         return ""
-    return ""
 
 def cell_time_proc(cell):#这里不能打断点
     if isinstance(cell , int) or isinstance(cell , float):
@@ -107,19 +114,27 @@ def cell_time_proc(cell):#这里不能打断点
         return cell.minute + cell.hour*60
         # return cell
     elif isinstance(cell , str):#有字符串表示的时间
+        if cell != "":
+            # print(cell)
+            pattern = r"(\d+)[:：]?(\d+)?[:：]?(\d+)?"
+            result = re.match(pattern, cell)
+            if result is not None:
+                valCount = len(list(filter(None, result.groups())))
+                if valCount == 1:
+                    return int(result.groups()[0])
+                elif valCount == 2:
+                    return int(result.groups()[0])*60 +  int(result.groups()[1])
+                elif valCount == 3:
+                    return f"{int(result.groups()[0])}:{int(result.groups()[2])}"
+                else:
+                    return "###"
 
-        pattern = re.compile(r'\W+')
-        if pattern.search(cell):#字符串中有间隔符,则自动计算时间
-            minute, second = pattern.split(cell)
-            minute = int(minute)
-            second = int(second)
-            return second + minute*60
         elif cell == "":
             return cell
         else :
             return int(cell) ##字符串中没有间隔符,则直接转换成时间
     else:#1900:00:00  异常数据
-        return ""
+        return "####"
 
 from enum import Enum
 class music_type(Enum):
@@ -149,19 +164,32 @@ def cell_type_proc(cell):
         return cell
     # else:
     #     raise
+import platform as plat
+system_type = plat.system() # 由于不同的系统的文件路径表示不一样，需要进行判断#并将datalist文件夹目录下的所有内容复制到dataset下
+if(system_type == 'Linux'):
+    pass
+
+
 
 def cell_origin_proc(cell):#这里不能打断点
-    if isinstance(cell , str):#有字符串表示的时间
-        return cell.replace("\\",'/').rstrip().rstrip('\"')
+    if isinstance(cell , str):#有字符串表示的路径
+        cell = cell.replace("\\","/").rstrip().rstrip('\"')
+        if not os.path.exists(cell):
+            print(cell)
+            print("\nthis path do not exist!!!!!!!!!!!\n")
+
+
+        return cell
+    return cell
+    #TODO 检测是否存在对应的文件
 
 from pathlib import Path
-def FFT_Change_wav_to_npy_file(directory, pattern='*.wav' ,img_size=1024 , re_build_wav = True ):
+def FFT_Change_wav_to_npy_file(directory, pattern='*.wav' ,img_size=512 , re_build_wav = True ):
     """
     """
     yasuo_beishu = 2
     file_wav_list=[]
     files = []
-
 
 
     for root, dirnames, filenames in os.walk(directory):
@@ -170,62 +198,69 @@ def FFT_Change_wav_to_npy_file(directory, pattern='*.wav' ,img_size=1024 , re_bu
             if os.path.exists(os.path.join(root, filename + ".npy")) == True:  # 已经存在就删除
                 if re_build_wav == True:
                     # os.chdir(directory)
-                    os.system("rm os.path.join(root, filename+'.npy')")
+                    os.remove(os.path.join(root, filename+'.npy'))
+            if os.path.getsize(os.path.join(root, filename)) < 1024 * 1024:
+                os.remove(os.path.join(root, filename))  # 异常文件
+                # os.system("rm os.path.join(root, filename)")#不要用系统命令，会报错sh: 1: Syntax error: "(" unexpected，并且不会停下来
 
-            else :
-                if os.path.getsize(os.path.join(root, filename)) < 1024*1024:
-                    pass
-                else:
-                    y_44k, sr = librosa.load(os.path.join(root, filename), sr=None, mono=True)
-                    if sr != 44100:
-                        y = librosa.resample(y_44k, sr, 44100)  # resample() 重采样函数
-                        y_44k = y
+    for root, dirnames, filenames in os.walk(directory):
+        for filename in fnmatch.filter(filenames, pattern):  # 实现列表特殊字符的过滤或筛选,返回符合匹配“.wav”字符列表
+            # if Path(os.path.join(root, filename+".npy")).exists == False:
+            print(os.path.join(root, filename))
+            y_44k, sr = librosa.load(os.path.join(root, filename), sr=None, mono=True)
 
-                    # librosa.display.waveplot(y_44k, sr=sr)#波形图
-                    # plt.show()
+            # if sr != 44100:
+            #     y = librosa.resample(y_44k, sr, 44100)  # resample() 重采样函数
+            #     y_44k = y
 
-                    time = librosa.get_duration(filename=os.path.join(root, filename))  # 持续时间（以秒为单位）
+            # librosa.display.waveplot(y_44k, sr=sr)#波形图
+            # plt.show()
 
-                    # 计算Mel  scaled 频谱  返回：Mel频谱shape=(n_mels, t)------------
-                    # 方法一：使用时间序列求Mel频谱
-                    # print(librosa.feature.melspectrogram(y=y_44k, sr=sr))
-                    # array([[  2.891e-07,   2.548e-03, ...,   8.116e-09,   5.633e-09],
-                    #        [  1.986e-07,   1.162e-02, ...,   9.332e-08,   6.716e-09],
-                    #        ...,
-                    #        [  3.668e-09,   2.029e-08, ...,   3.208e-09,   2.864e-09],
-                    #        [  2.561e-10,   2.096e-09, ...,   7.543e-10,   6.101e-10]])
+            time = librosa.get_duration(filename=os.path.join(root, filename))  # 持续时间（以秒为单位）
 
-                    # 方法二：使用stft频谱求Mel频谱
-                    D = np.abs(librosa.stft(y_44k)) ** 2  # stft频谱
-                    S = librosa.feature.melspectrogram(S=D, n_mels=img_size)  # 使用stft频谱求Mel频谱,有时间看PADING参数
+            # 计算Mel  scaled 频谱  返回：Mel频谱shape=(n_mels, t)------------
+            # 方法一：使用时间序列求Mel频谱
+            # print(librosa.feature.melspectrogram(y=y_44k, sr=sr))
+            # array([[  2.891e-07,   2.548e-03, ...,   8.116e-09,   5.633e-09],
+            #        [  1.986e-07,   1.162e-02, ...,   9.332e-08,   6.716e-09],
+            #        ...,
+            #        [  3.668e-09,   2.029e-08, ...,   3.208e-09,   2.864e-09],
+            #        [  2.561e-10,   2.096e-09, ...,   7.543e-10,   6.101e-10]])
 
-                    # plt.figure(figsize=(10, 4))
-                    S_dB = librosa.power_to_db(S, ref=np.max)
-                    print(S_dB.shape)
-                    mel_spect2 = S_dB[:, -1: -1 * yasuo_beishu * img_size: -1 * yasuo_beishu]
-                    np.save(os.path.join(root, filename + ".npy"), mel_spect2 * (-10))
+            # 方法二：使用stft频谱求Mel频谱#TODO
+            D = np.abs(librosa.stft(y_44k , dtype=np.float)) #** 2  # stft频谱
 
-                    # librosa.display.specshow(S_dB ,  y_axis='mel', fmax=8000, x_axis='time')
-                    # plt.colorbar(format='%+2.0f dB')
-                    # plt.title('Mel spectrogram')
-                    # plt.tight_layout()
-                    # plt.show()
+            S = librosa.feature.melspectrogram(S=D, n_mels=img_size)  # 使用stft频谱求Mel频谱,有时间看PADING参数
 
+            # plt.figure(figsize=(10, 4))
+            S_dB = librosa.power_to_db(S, ref=np.max)
+
+            mel_spect2 = S_dB[:, -1: -1 * yasuo_beishu * img_size: -1 * yasuo_beishu]
+            print(mel_spect2.shape)
+            np.save(os.path.join(root, filename + ".npy"), mel_spect2 )
+
+            # librosa.display.specshow(S_dB ,  y_axis='mel', fmax=8000, x_axis='time')
+            # plt.colorbar(format='%+2.0f dB')
+            # plt.title('Mel spectrogram')
+            # plt.tight_layout()
+            # plt.show()
+import traceback
 
 class ListDataset(Dataset):
     def __init__(self, list_path, img_size=416, augment=True, multiscale=True, normalized_labels=True):
-        sub_file = 'data/custom/' + 'data.xlsx'  # train.py文件的相对路径
+        sub_file = os.path.join('data/custom/' , 'data.xlsx' )   # train.py文件的相对路径
+        tmp_file = os.path.join('data/custom/' , 'data_tmp.xlsx' )
         sub_file_yuchuli = 'data/custom/' + 'yuchulihou.xlsx'
         sub_file_all_ndarray = 'data/custom/' + 'all_ndarray.xlsx'
-        FFT_Change_wav_to_npy_file("/data3/code/github_code/yolov3-to-dj/mini_yolov3", '*.wav', img_size=512, re_build_wav=False)
-        FFT_Change_wav_to_npy_file("/data3/code/github_code/yolov3-to-dj/mini_yolov3", '*.mp3', img_size=512, re_build_wav=False)#ls -lR|grep "^-"|wc -l
-        excel = pd.read_excel(io=sub_file, header=1)  # 0是第一行
+
+        excel = pd.read_excel(io=sub_file, header=1)  #header= 0是第一行
         excel = excel.fillna("")
-        for col_name in excel.columns.tolist():
+        # 1、数据清洗
+        for index , col_name in enumerate(excel.columns.tolist()):
             if isinstance(col_name, str):
                 if col_name.startswith("time-end") or col_name.startswith("time-start"):
-                    excel[col_name] = excel[col_name].apply(cell_time_proc)
-                    # excel[col_name] = excel[col_name].apply(cell_time_yuchuli_proc)#预处理和找错误使用
+                    excel[col_name] = excel[col_name].apply(cell_time_proc )
+                    # excel[col_name] = excel[col_name].apply(cell_time_yuchuli_proc , args=[index])#预处理和找错误使用
                     # excel[col_name] = excel[col_name].astype(int)#设置单元格格式
                 elif col_name.startswith("type-specific"):
                     continue  # 暂时不用预处理这列
@@ -234,22 +269,33 @@ class ListDataset(Dataset):
                 elif col_name.startswith("origin") or col_name.startswith("drum"):
                     excel[col_name] = excel[col_name].apply(cell_origin_proc)  ##预处理
 
+
+        excel.to_excel(tmp_file, index = False)
         # excel.values[0][4]
         # excel.loc[[0, 1, 2, 3], ['type0', 'type1']].to_numpy()#完美 取4行，
         # excel.to_excel(sub_file_yuchuli , index=False) #预处理，保存
         # excel.to_excel(sub_file_all_ndarray, index=False)  # 全部处理成NDARRAY，保存
-        arrary = excel.loc[:, [
-                                "origin",
-                                'time-start0', 'time-end0', 'type0',   'time-start1', 'time-end1', 'type1',   'time-start2', 'time-end2', 'type2',
-                                'time-start3', 'time-end3', 'type3',   'time-start4', 'time-end4', 'type4',   'time-start5', 'time-end5', 'type5',
-                                'time-start6', 'time-end6', 'type6',   'time-start7', 'time-end7', 'type7',   'time-start8', 'time-end8', 'type8',
-                                'time-start9', 'time-end9', 'type9',   'time-start10', 'time-end10', 'type10',  'time-start11', 'time-end11', 'type11',
-                                'time-start12', 'time-end12', 'type12', 'time-start13', 'time-end13', 'type13', 'time-start14', 'time-end14', 'type14',
-                                ]].to_json(r'filename1.json', lines=True, orient="records")  # 保存json文件的字典格式，不用
+        # arrary = excel.loc[:, [
+        #                         "origin",
+        #                         'time-start0', 'time-end0', 'type0',   'time-start1', 'time-end1', 'type1',   'time-start2', 'time-end2', 'type2',
+        #                         'time-start3', 'time-end3', 'type3',   'time-start4', 'time-end4', 'type4',   'time-start5', 'time-end5', 'type5',
+        #                         'time-start6', 'time-end6', 'type6',   'time-start7', 'time-end7', 'type7',   'time-start8', 'time-end8', 'type8',
+        #                         'time-start9', 'time-end9', 'type9',   'time-start10', 'time-end10', 'type10',  'time-start11', 'time-end11', 'type11',
+        #                         'time-start12', 'time-end12', 'type12', 'time-start13', 'time-end13', 'type13', 'time-start14', 'time-end14', 'type14',
+        #                         ]].to_json(r'filename1.json', lines=True, orient="records")  # 保存json文件的字典格式，不用
 
-        # 数据清洗
+        ########################只需要生成一次##########################
+        try:# 改变大小后，需要re_build_wav=True
+            FFT_Change_wav_to_npy_file("/data3/code/github_code/yolov3-to-dj/mini_yolov3/", '*.wav', img_size=512, re_build_wav=False)
+        except StopIteration:
+            print("errro***************************")
+        except OverflowError:
+            print("errro***************************1111")
+            print(traceback.format_exc())
+        FFT_Change_wav_to_npy_file("/data3/code/github_code/yolov3-to-dj/mini_yolov3/", '*.mp3', img_size=512, re_build_wav=False)#ls -lR|grep "^-"|wc -l
 
-        # 填充0值  #前面已经整体上粗糙的填充了，前面是按值传递，需要赋值
+
+        # 2、填充0值  #前面已经整体上粗糙的填充了，前面是按值传递，需要赋值
         excel[
             'time-start0'
         ].fillna("", inplace=True)#inplace=True :代表按地址传递
@@ -277,7 +323,7 @@ class ListDataset(Dataset):
         sub = pd.read_pickle(pkl_path)
         for r in sub.values.tolist():
             self.img_files.append(r)
-            # print(r)
+            # print(r)# 调试时查看数据
 
         return
         with open(list_path, "r") as file:
@@ -302,12 +348,12 @@ class ListDataset(Dataset):
         # ---------
         img_path   = self.img_files[index % len(self.img_files)][0].rstrip().rstrip('\"')+'.npy'  #这个路径是EXCEL中的，按照文件甲分类的
         img = np.load(img_path)#加载.npy
-        label = self.img_files[index % len(self.img_files)][1:].rstrip()#返回标签
+        label = self.img_files[index % len(self.img_files)][1:]#返回标签 .rstrip()
 
         for index, element in enumerate(label):
             if element == "":
                 del label[index]
-        return img , label
+        return img_path , img , label
 
         # Extract image as PyTorch tensor
         img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
